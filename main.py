@@ -13,21 +13,21 @@ from st_pages import Page, show_pages, add_page_title
 show_pages(
     [
         Page("main.py", "Introduction"),
-        Page("pages/dataframe.py", "Enrollment Data"),
-        Page("pages/regression.py", "Regression Model"),
+        Page("pages/dataframe.py", "Borrower's Information for Loan Approval Assessment"),
+        Page("pages/classification.py", "Classification Model"),
     ]
 )
 
-st.title("Online vs. Classroom: Which Enrollment Type is Right?")
+st.title("Machine Learning for Loan Approval: A Balancing Act Between Accuracy and Fairness")
 
 st.markdown("""
             <h2> Background and Objective </h2>
             <div style="text-align: justify;">
-            You are working as a data scientist at a local University. The university started offering online courses to reach a wider range of students. The university wants you to help them understand enrollment trends. They would like you to identify what contributes to higher enrollment. In particular, whether the course type (online or classroom) is a factor.
+            A start-up company wants to automate loan approvals by building a classifier to predict whether a loan will be paid back. In this situation, it is more important to accurately predict whether a loan will not be paid back rather than if a loan is paid back. Your manager will want to know how you accounted for this in training and evaluation your model. As a machine learning scientist, we need to build the classifier and prepare a report accessible to a broad audience.
             </div>
             <h2> Introduction </h2>
             <div style="text-align: justify;">
-            Enrollment trends in online courses accelerated dramatically during the COVID-19 pandemic. During the height of the pandemic, most classes moved to online-only instruction. While the effects of the pandemic has subsided, online learning remains popular, with many students choosing to take online courses or even complete entire degrees online. In hindsight, online courses offer flexibility and convenience that traditional classroom-based courses cannot. Students can take online courses at their own pace and on their own schedule, from anywhere in the world. This makes online learning a good option for students who are working full-time, have families, or live in remote areas. However, there are also some drawbacks such as the difficulty of staying motivated and engaged. Students also miss out on the social interaction and networking opportunities that are available in traditional classroom settings. It is important to note that online and onsite learning are not mutually exclusive. Many students choose to take a mix of online and onsite courses. This allows them to take advantage of the benefits of both types of learning.
+            The repayment rate of loans is influenced by a variety of factors, including the borrower's creditworthiness, the type of loan, and the economic climate. Studies found that borrowers with higher credit scores are more likely to repay their loans on time and in full. Furthermorele, student loans are typically repaid at a lower rate than other types of loans, such as personal loans or auto loansLastinally, the economic climate can also affect the loan repayment rate. During economic downturns, borrowers may be more likely to default on their loans due to job loss or other financial difficult of defaults.
             </div>
             """, unsafe_allow_html=True
             )
