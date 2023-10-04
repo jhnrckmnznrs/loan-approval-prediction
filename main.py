@@ -13,7 +13,7 @@ from st_pages import Page, show_pages, add_page_title
 show_pages(
     [
         Page("main.py", "Introduction"),
-        Page("pages/dataframe.py", "Borrower's Information for Loan Approval Assessment"),
+        Page("pages/dataframe.py", "Loan Borrower's Data"),
         Page("pages/classification.py", "Classification Model"),
     ]
 )
