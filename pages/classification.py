@@ -1,105 +1,99 @@
 import numpy as np
 import pandas as pd
-from math import floor
+import xgboost as xgb
 
-from sklearn.linear_model import LinearRegression, ElasticNet, LassoLarsCV
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error as MSE
+from sklearn.metrics import recall_score
+
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import Binarizer, MaxAbsScaler, RobustScaler, StandardScaler
-from sklearn.feature_selection import SelectPercentile, f_regression
+from sklearn.preprocessing import MinMaxScaler
+from imblearn.over_sampling import SMOTE
+
 
 import streamlit as st
 # from streamlit.hello.utils import show_code
 
-filepath = "https://s3.amazonaws.com/talent-assets.datacamp.com/university_enrollment_2306.csv"
-df = pd.read_csv(filepath)
-values = {"course_type": 'classroom', "year": 2011, "enrollment_count": 0, "pre_score": '0', "post_score": 0, "pre_requirement": 'None', "department": 'unknown'}
-df = df.fillna(value = values)
-df['pre_score'] = df['pre_score'].replace('-', '0')
-df['pre_score'] = df['pre_score'].astype(float)
-df['department'] = df['department'].str.strip().replace('Math', 'Mathematics')
-df_dummy = pd.get_dummies(df, drop_first = True)
-X = df_dummy.drop(['enrollment_count', 'course_id'], axis = 1).values
-y = df_dummy['enrollment_count'].values
-
-
-def get_classifier(clf_name, random_state):
+def get_classifier(X, y, clf_name, smote, random_state):
+    if smote == 'True':
+        smt = SMOTE()
+        X, y = smt.fit_resample(X, y)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state = random_state)
-    if clf_name == 'Linear Regression':
-        model = LinearRegression()
+    if clf_name == 'Extreme Gradient Boosted Trees':
+        model = xgb.XGBClassifier(objective="binary:logistic", random_state=42)
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test) # Baseline
         y_pred_train = model.predict(X_train) # Baseline
-        rmse_train = MSE(y_train, y_pred_train, squared=False)
-        rmse_test = MSE(y_test, y_pred, squared=False)
-    elif clf_name == 'Elastic Net':
-        alpha = st.sidebar.number_input('Penalty Terms Multiplier', format = '%f', value = 1.0)
-        model = ElasticNet(alpha = alpha)
-        model.fit(X_train, y_train)
-        y_pred = model.predict(X_test)
-        y_pred_train = model.predict(X_train) # Baseline
-        rmse_train = MSE(y_train, y_pred_train, squared=False)
-        rmse_test = MSE(y_test, y_pred, squared=False)
+        rec_train = recall_score(y_train, y_pred_train)
+        rec_test = recall_score(y_test, y_pred)
     elif clf_name == 'TPOT-Optimized Pipeline':
         model = make_pipeline(
-            SelectPercentile(score_func=f_regression, percentile=84),
-            StandardScaler(),
-            Binarizer(threshold=0.55),
-            RobustScaler(),
-            MaxAbsScaler(),
-            LassoLarsCV(normalize=False)
+            MinMaxScaler(),
+            GradientBoostingClassifier(learning_rate=0.5, max_depth=10, max_features=0.9000000000000001, min_samples_leaf=2, min_samples_split=5, n_estimators=100, subsample=0.9500000000000001)
             )
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
         y_pred_train = model.predict(X_train) # Baseline
-        rmse_train = MSE(y_train, y_pred_train, squared=False)
-        rmse_test = MSE(y_test, y_pred, squared=False)
-    return model, rmse_train, rmse_test
+        rec_train = recall_score(y_train, y_pred_train)
+        rec_test = recall_score(y_test, y_pred)
+    return model, rec_train, rec_test
+
+filepath = "loan_data.csv"
+df = pd.read_csv(filepath)
+y = df['not.fully.paid']
+X_data = pd.get_dummies(df.drop(columns = ['not.fully.paid','int.rate'], axis = 1), drop_first = True)
 
 random_state = st.sidebar.number_input('Random Seed', value = 42, step = 1)
-clf = st.sidebar.selectbox("Regression Model", ('Elastic Net', 'Linear Regression', 'TPOT-Optimized Pipeline'))
-model, rmse_train, rmse_test = get_classifier(clf, random_state)
-act = st.sidebar.radio("Action", ('Training Information', 'Make Prediction'))
+clf = st.sidebar.selectbox("Classification Model", ('Extreme Gradient Boosted Trees', 'TPOT-Optimized Pipeline'))
+smote = st.sidebar.selectbox("Synthetic Minority Oversampling Technique", ('True', 'False'))
+model, rec_train, rec_test = get_classifier(X_data, y, clf, smote, random_state)
+act = st.sidebar.radio("Action", ('Model Information', 'Make Prediction'))
 
 def get_action(act_name, model):
-    if act_name == 'Training Information':
+    if act_name == 'Model Information':
         st.markdown(
             """ 
             # Trained Model Information
             """
             )
         st.write('Hyperparameters of the Selected Model', model.get_params())
-        st.write('Root Mean Square Error on the Training Set:', rmse_train)
-        st.write('Root Mean Square Error on the Testing Set:', rmse_test)
+        st.write('Recall Score on the Training Set:', rec_train)
+        st.write('Recall Score on the Testing Set:', rec_test)
     else:
         st.write("### Input Features")
-        t= str.lower(st.selectbox('Course Type', ('Online', 'Classroom')))
-        y = st.number_input('Year', value = 2011)
-        pr = st.number_input('Pre-assessment Score', format = '%f', value = 84.0)
-        po = st.number_input('Post-Assessment Score', format = '%f', value = 95.0)
-        pre = st.selectbox('Pre-requisite', ('None', 'Beginner', 'Intermediate'))
-        d = st.selectbox('Department', ('Science', 'Mathematics', 'Technology', 'Engineering'))
-        if t == 'online':
-            t = 1
+        cp= st.selectbox('Credit Policy', (1, 0))
+        purp= st.selectbox('Purpose', ("all_other", "credit_card", "debt_consolidation", "educational", "home_improvement", "major_purchase", "small_business"))
+        mi = st.number_input('Monthly Installment', format = '%f', value = 474.42)
+        ai = st.number_input('Annual Income', format = '%f', value = 70000.0)
+        dti = st.number_input('Debt-to-Income Ratio', format = '%f', value = 16.08)
+        fico = st.number_input('FICO Credit Score', step = 1, value = 667)
+        dcl = st.number_input('Days with Credit Line', format = '%f', value = 5429.958333)
+        rb = st.number_input('Revolving Balance', format = '%f', value = 29797.0)
+        rlur = st.number_input('Revolving Line Utilization Rate', format = '%f', value = 34.6)
+        inq = st.number_input('Inquiries in the Last Six Months', step = 1, value = 3)
+        delinq = st.number_input('Payment Delinquency in the Past Two Years', step = 2)
+        derog = st.number_input('Number of Derogatory Public Records', step = 1)
+
+        if purp == 'all_other':
+            purp = np.zeros(6)
+        elif purp == 'credit_card':
+            purp = [1,0,0,0,0,0]
+        elif purp == 'debt_consolidation':
+            purp = [0,1,0,0,0,0]
+        elif purp == 'educational':
+            purp = [0,0,1,0,0,0]
+        elif purp == 'home_improvement':
+            purp = [0,0,0,1,0,0]
+        elif purp == 'major_purchase':
+            purp = [0,0,0,0,1,0]
+        elif purp == 'small_business':
+            purp = [0,0,0,0,0,1]
+        input_feat = np.array(np.concatenate([[cp,mi,np.log(ai), dti, fico, dcl, rb, rlur, inq, delinq, derog],purp]).reshape(1,-1))
+        if model.predict(input_feat)[0] == 1:
+            st.write('#### THE LOAN WILL NOT BE FULLY PAID.')
         else:
-            t = 0
-        if pre == 'Beginner':
-            pre = np.zeros(2)
-        elif pre == 'Intermediate':
-            pre = [1,0]
-        else:
-            pre = [0,1]
-        if d == 'Engineering':
-            d = np.zeros(3) 
-        elif d == 'Mathematics':
-            d = [1,0,0]
-        elif d == 'Science':
-            d = [0,1,0]
-        else:
-            d = [0,0,1]
-        input_feat = np.array(np.concatenate([[y,pr,po,t],pre,d]).reshape(1,-1))
-        st.write('#### Predicted Enrollment Count:', floor(model.predict(input_feat)[0]))
+            st.write('#### THE LOAN WILL BE FULLY PAID.')    
     return
 
 get_action(act, model)
