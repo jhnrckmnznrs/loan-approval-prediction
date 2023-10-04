@@ -1,1 +1,8 @@
-
+imblearn
+numpy
+pandas
+pygwalker
+scikit-learn
+st_pages
+streamlit
+xgboost
